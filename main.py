@@ -77,14 +77,14 @@ if __name__ == '__main__':
 
         LOGGER.info("Extracting volume and period from  volumeByperiods object")
         extractDf = explodeDf.select(explodeDf.day, col("col.period"), col("col.volume"))
-        
-        LOGGER.info("Writing data to delta table")
-        try:
-            extractDf.write.mode("append").partitionBy("day").format("delta").saveAsTable("powerTradesData_delta")
-            
 
+        extractDf.createOrReplaceTempView("PowerData")
+        
+        
+        try:
+        
             LOGGER.info("Apply transformations and get calculate aggregrations")
-            selectDf =  session.sql("SELECT period, sum(volume) as Volume FROM powerTradesData_delta where day ='" + date.today().strftime("%Y-%m-%d") + "' group by period order by period" )
+            selectDf =  session.sql("SELECT period, sum(volume) as Volume FROM PowerData where day ='" + date.today().strftime("%Y-%m-%d") + "' group by period order by period" )
 
             LOGGER.info("Coverting period to HH:MM format")
             resultDf = selectDf.withColumn("LocalTime", convertToTime_udf(selectDf["period"]))
@@ -93,6 +93,9 @@ if __name__ == '__main__':
             filePathName = getFilePathAndName(finalDest)
             LOGGER.info("Creating csv file in the following path {}".format(filePathName))
             resultDf.repartition(1).write.format("csv").option("header", True).save(getFilePathAndName(filePathName))
+            
+            LOGGER.info("Writing data to delta table")
+            extractDf.write.mode("append").partitionBy("day").format("delta").saveAsTable("powerTradesData_delta")
 
             LOGGER.info("Job Done. Congratutaltions")
         except:
