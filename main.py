@@ -54,8 +54,10 @@ if __name__ == '__main__':
 
     #session.sparkContext.setLogLevel('INFO')
 
-    args = argv[1:]
-    finalDest = args[0]
+    #args = argv[1:]
+    #finalDest = args[0]
+
+    path = dbutils.widgets.get("path")
     convertToTime_udf = udf(convertToTime, StringType())
 
     LOGGER.info("Intailizing PowerService API")
@@ -90,9 +92,9 @@ if __name__ == '__main__':
             resultDf = selectDf.withColumn("LocalTime", convertToTime_udf(selectDf["period"]))
 
             #resultDf.show()
-            filePathName = getFilePathAndName(finalDest)
+            filePathName = getFilePathAndName(path)
             LOGGER.info("Creating csv file in the following path {}".format(filePathName))
-            resultDf.repartition(1).write.format("csv").option("header", True).save(getFilePathAndName(filePathName))
+            resultDf.repartition(1).write.format("csv").option("header", True).save(filePathName)
             
             LOGGER.info("Writing data to delta table")
             extractDf.write.mode("append").partitionBy("day").format("delta").saveAsTable("powerTradesData_delta")
